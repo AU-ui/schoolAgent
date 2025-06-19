@@ -113,10 +113,159 @@ const updateStudentProfile = async (req, res) => {
     }
 };
 
+// Get student performance statistics
+const getStudentPerformanceStats = async (req, res) => {
+    try {
+        const { student_id } = req.params;
+        const { class_id, subject_id, exam_type, term } = req.query;
+
+        // Get overall performance
+        const [overallStats] = await pool.query(
+            `SELECT 
+                COUNT(DISTINCT e.id) as total_exams,
+                ROUND(AVG(er.marks_obtained), 2) as average_marks,
+                MAX(er.marks_obtained) as highest_marks,
+                MIN(er.marks_obtained) as lowest_marks,
+                COUNT(CASE WHEN er.marks_obtained >= e.passing_marks THEN 1 END) as exams_passed,
+                COUNT(CASE WHEN er.marks_obtained < e.passing_marks THEN 1 END) as exams_failed,
+                ROUND((COUNT(CASE WHEN er.marks_obtained >= e.passing_marks THEN 1 END)::float / 
+                    COUNT(DISTINCT e.id)::float) * 100, 2) as pass_percentage
+            FROM exam_results er
+            JOIN exams e ON er.exam_id = e.id
+            WHERE er.student_id = $1
+            ${class_id ? 'AND e.class_id = $2' : ''}
+            ${subject_id ? 'AND e.subject_id = $3' : ''}
+            ${exam_type ? 'AND e.exam_type = $4' : ''}
+            ${term ? 'AND e.term = $5' : ''}`,
+            [student_id, class_id, subject_id, exam_type, term].filter(Boolean)
+        );
+
+        // Get subject-wise performance
+        const [subjectStats] = await pool.query(
+            `SELECT 
+                s.name as subject_name,
+                COUNT(DISTINCT e.id) as total_exams,
+                ROUND(AVG(er.marks_obtained), 2) as average_marks,
+                MAX(er.marks_obtained) as highest_marks,
+                MIN(er.marks_obtained) as lowest_marks,
+                COUNT(CASE WHEN er.marks_obtained >= e.passing_marks THEN 1 END) as exams_passed,
+                COUNT(CASE WHEN er.marks_obtained < e.passing_marks THEN 1 END) as exams_failed
+            FROM exam_results er
+            JOIN exams e ON er.exam_id = e.id
+            JOIN subjects s ON e.subject_id = s.id
+            WHERE er.student_id = $1
+            ${class_id ? 'AND e.class_id = $2' : ''}
+            ${exam_type ? 'AND e.exam_type = $3' : ''}
+            ${term ? 'AND e.term = $4' : ''}
+            GROUP BY s.id, s.name
+            ORDER BY s.name`,
+            [student_id, class_id, exam_type, term].filter(Boolean)
+        );
+
+        // Get exam type performance
+        const [examTypeStats] = await pool.query(
+            `SELECT 
+                e.exam_type,
+                COUNT(DISTINCT e.id) as total_exams,
+                ROUND(AVG(er.marks_obtained), 2) as average_marks,
+                MAX(er.marks_obtained) as highest_marks,
+                MIN(er.marks_obtained) as lowest_marks,
+                COUNT(CASE WHEN er.marks_obtained >= e.passing_marks THEN 1 END) as exams_passed,
+                COUNT(CASE WHEN er.marks_obtained < e.passing_marks THEN 1 END) as exams_failed
+            FROM exam_results er
+            JOIN exams e ON er.exam_id = e.id
+            WHERE er.student_id = $1
+            ${class_id ? 'AND e.class_id = $2' : ''}
+            ${subject_id ? 'AND e.subject_id = $3' : ''}
+            ${term ? 'AND e.term = $4' : ''}
+            GROUP BY e.exam_type
+            ORDER BY e.exam_type`,
+            [student_id, class_id, subject_id, term].filter(Boolean)
+        );
+
+        // Get performance trend
+        const [performanceTrend] = await pool.query(
+            `SELECT 
+                e.exam_type,
+                e.start_date,
+                er.marks_obtained,
+                e.total_marks,
+                ROUND((er.marks_obtained::float / e.total_marks::float) * 100, 2) as percentage,
+                CASE 
+                    WHEN er.marks_obtained >= e.passing_marks THEN 'Pass'
+                    ELSE 'Fail'
+                END as result
+            FROM exam_results er
+            JOIN exams e ON er.exam_id = e.id
+            WHERE er.student_id = $1
+            ${class_id ? 'AND e.class_id = $2' : ''}
+            ${subject_id ? 'AND e.subject_id = $3' : ''}
+            ${exam_type ? 'AND e.exam_type = $4' : ''}
+            ${term ? 'AND e.term = $5' : ''}
+            ORDER BY e.start_date ASC`,
+            [student_id, class_id, subject_id, exam_type, term].filter(Boolean)
+        );
+
+        // Get strength and weakness analysis
+        const [strengthWeakness] = await pool.query(
+            `WITH question_stats AS (
+                SELECT 
+                    eq.question_type,
+                    eq.difficulty_level,
+                    eq.skill_type,
+                    COUNT(*) as total_questions,
+                    COUNT(CASE WHEN eqr.is_correct THEN 1 END) as correct_answers
+                FROM exam_question_results eqr
+                JOIN exam_questions eq ON eqr.question_id = eq.id
+                JOIN exam_results er ON eqr.exam_result_id = er.id
+                WHERE er.student_id = $1
+                ${class_id ? 'AND er.class_id = $2' : ''}
+                ${subject_id ? 'AND er.subject_id = $3' : ''}
+                GROUP BY eq.question_type, eq.difficulty_level, eq.skill_type
+            )
+            SELECT 
+                question_type,
+                difficulty_level,
+                skill_type,
+                total_questions,
+                correct_answers,
+                ROUND((correct_answers::float / total_questions::float) * 100, 2) as success_rate,
+                CASE 
+                    WHEN (correct_answers::float / total_questions::float) >= 0.7 THEN 'Strength'
+                    WHEN (correct_answers::float / total_questions::float) <= 0.4 THEN 'Weakness'
+                    ELSE 'Needs Improvement'
+                END as performance_category
+            FROM question_stats
+            ORDER BY success_rate DESC`,
+            [student_id, class_id, subject_id].filter(Boolean)
+        );
+
+        res.json({
+            success: true,
+            data: {
+                overall_performance: overallStats[0],
+                subject_wise_performance: subjectStats,
+                exam_type_performance: examTypeStats,
+                performance_trend: performanceTrend,
+                strength_weakness_analysis: strengthWeakness
+            }
+        });
+
+    } catch (error) {
+        console.error('Error fetching student performance stats:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching student performance statistics',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     getStudentProfile,
     getStudentClasses,
     getStudentGrades,
     getStudentAttendance,
-    updateStudentProfile
+    updateStudentProfile,
+    getStudentPerformanceStats
 }; 

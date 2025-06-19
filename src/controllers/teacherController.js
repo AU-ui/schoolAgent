@@ -1,12 +1,35 @@
 const pool = require('../config/db');
 
-// Get all tasks for a teacher
+// Get teacher's classes
+const getTeacherClasses = async (req, res) => {
+    try {
+        const teacherId = req.user.id;
+
+        const classes = await pool.query(
+            `SELECT c.*, COUNT(s.id) as student_count 
+             FROM classes c 
+             LEFT JOIN students s ON c.id = s.class_id 
+             WHERE c.teacher_id = $1 
+             GROUP BY c.id`,
+            [teacherId]
+        );
+
+        res.json(classes.rows);
+    } catch (error) {
+        console.error('Error fetching teacher classes:', error);
+        res.status(500).json({ message: 'Server error while fetching classes' });
+    }
+};
+
+// Get teacher's tasks
 const getTeacherTasks = async (req, res) => {
     try {
         const teacherId = req.user.id;
-        
+
         const tasks = await pool.query(
-            'SELECT * FROM teacher_tasks WHERE teacher_id = $1 ORDER BY created_at DESC',
+            `SELECT * FROM tasks 
+             WHERE assigned_to = $1 
+             ORDER BY due_date ASC`,
             [teacherId]
         );
 
@@ -129,6 +152,7 @@ const sendMessageToParent = async (req, res) => {
 };
 
 module.exports = {
+    getTeacherClasses,
     getTeacherTasks,
     createTask,
     updateTaskStatus,

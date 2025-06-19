@@ -2,7 +2,18 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/db');
 
-// Get messages for the authenticated parent
+/**
+ * @swagger
+ * /api/parent-messages/parent/messages:
+ *   get:
+ *     summary: Get messages for the authenticated parent
+ *     tags: [Parent Messages]
+ *     responses:
+ *       200:
+ *         description: List of messages retrieved successfully
+ *       500:
+ *         description: Server error
+ */
 router.get('/parent/messages', async (req, res) => {
     try {
         // In a real application, parentId would come from the authenticated user's session/token
@@ -24,7 +35,18 @@ router.get('/parent/messages', async (req, res) => {
     }
 });
 
-// Get messages for the authenticated teacher
+/**
+ * @swagger
+ * /api/parent-messages/teacher/messages:
+ *   get:
+ *     summary: Get messages for the authenticated teacher
+ *     tags: [Parent Messages]
+ *     responses:
+ *       200:
+ *         description: List of messages retrieved successfully
+ *       500:
+ *         description: Server error
+ */
 router.get('/teacher/messages', async (req, res) => {
     try {
         // In a real application, teacherId would come from the authenticated user's session/token
@@ -46,7 +68,35 @@ router.get('/teacher/messages', async (req, res) => {
     }
 });
 
-// Send new message (can be from parent to teacher or teacher to parent)
+/**
+ * @swagger
+ * /api/parent-messages:
+ *   post:
+ *     summary: Send a new message (can be from parent to teacher or teacher to parent)
+ *     tags: [Parent Messages]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teacher_id
+ *               - parent_id
+ *               - message
+ *             properties:
+ *               teacher_id:
+ *                 type: integer
+ *               parent_id:
+ *                 type: integer
+ *               message:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Message sent successfully
+ *       500:
+ *         description: Server error
+ */
 router.post('/', async (req, res) => {
     try {
         const { teacher_id, parent_id, message } = req.body;
@@ -62,7 +112,38 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Update message status (mark as read)
+/**
+ * @swagger
+ * /api/parent-messages/{messageId}/status:
+ *   patch:
+ *     summary: Update message status (mark as read)
+ *     tags: [Parent Messages]
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the message
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Message status updated successfully
+ *       404:
+ *         description: Message not found
+ *       500:
+ *         description: Server error
+ */
 router.patch('/:messageId/status', async (req, res) => {
     try {
         const { messageId } = req.params;
@@ -83,7 +164,25 @@ router.patch('/:messageId/status', async (req, res) => {
     }
 });
 
-// Get unread message count for a user
+/**
+ * @swagger
+ * /api/parent-messages/unread/{userId}:
+ *   get:
+ *     summary: Get unread message count for a user
+ *     tags: [Parent Messages]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the user
+ *     responses:
+ *       200:
+ *         description: Unread message count retrieved successfully
+ *       500:
+ *         description: Server error
+ */
 router.get('/unread/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
@@ -100,7 +199,31 @@ router.get('/unread/:userId', async (req, res) => {
     }
 });
 
-// Get conversation between parent and teacher
+/**
+ * @swagger
+ * /api/parent-messages/conversation/{parentId}/{teacherId}:
+ *   get:
+ *     summary: Get conversation between parent and teacher
+ *     tags: [Parent Messages]
+ *     parameters:
+ *       - in: path
+ *         name: parentId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the parent
+ *       - in: path
+ *         name: teacherId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the teacher
+ *     responses:
+ *       200:
+ *         description: Conversation retrieved successfully
+ *       500:
+ *         description: Server error
+ */
 router.get('/conversation/:parentId/:teacherId', async (req, res) => {
     try {
         const { parentId, teacherId } = req.params;

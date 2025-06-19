@@ -25,7 +25,10 @@ async function createTables() {
                 is_active BOOLEAN DEFAULT true,
                 last_login TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_verified BOOLEAN DEFAULT FALSE,
+                email_verification_token VARCHAR,
+                token_expiry TIMESTAMP
             );
         `);
         console.log('Users table created successfully');

@@ -3,8 +3,42 @@ const router = express.Router();
 const { pool } = require('../config/db');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const authController = require('../controllers/authController');
 
-// Register new user
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *               - role
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *       400:
+ *         description: User already exists
+ *       500:
+ *         description: Server error
+ */
 router.post('/register', async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
@@ -38,7 +72,34 @@ router.post('/register', async (req, res) => {
     }
 });
 
-// Login user
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: User login
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       400:
+ *         description: Invalid credentials
+ *       500:
+ *         description: Server error
+ */
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -81,71 +142,65 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// Forgot password
-router.post('/forgot-password', async (req, res) => {
-    try {
-        const { email } = req.body;
+/**
+ * @swagger
+ * /api/auth/forgot-password:
+ *   post:
+ *     summary: Initiate password reset
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password reset instructions sent to your email
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.post('/forgot-password', authController.forgotPassword);
 
-        // Check if user exists
-        const result = await pool.query(
-            'SELECT * FROM users WHERE email = $1',
-            [email]
-        );
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Complete password reset
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - resetToken
+ *               - newPassword
+ *             properties:
+ *               resetToken:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password has been reset successfully
+ *       400:
+ *         description: Invalid or expired reset token
+ *       500:
+ *         description: Server error
+ */
+router.post('/reset-password', authController.resetPassword);
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ message: 'User not found' });
-        }
+router.get('/verify-email', authController.verifyEmail);
 
-        // Generate reset token
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
-
-        // Store reset token in database
-        await pool.query(
-            'UPDATE users SET reset_token = $1, reset_token_expiry = $2 WHERE email = $3',
-            [resetToken, resetTokenExpiry, email]
-        );
-
-        // TODO: Send email with reset link
-        // For now, we'll just return the token (in production, this should be sent via email)
-        res.json({
-            message: 'Password reset instructions sent to your email',
-            resetToken // Remove this in production
-        });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error', error: err.message });
-    }
-});
-
-// Reset password
-router.post('/reset-password', async (req, res) => {
-    try {
-        const { resetToken, newPassword } = req.body;
-
-        // Find user with valid reset token
-        const result = await pool.query(
-            'SELECT * FROM users WHERE reset_token = $1 AND reset_token_expiry > NOW()',
-            [resetToken]
-        );
-
-        if (result.rows.length === 0) {
-            return res.status(400).json({ message: 'Invalid or expired reset token' });
-        }
-
-        // Hash new password
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-        // Update password and clear reset token
-        await pool.query(
-            'UPDATE users SET password = $1, reset_token = NULL, reset_token_expiry = NULL WHERE reset_token = $2',
-            [hashedPassword, resetToken]
-        );
-
-        res.json({ message: 'Password has been reset successfully' });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error', error: err.message });
-    }
-});
+router.post('/signup', authController.signup);
 
 module.exports = router; 

@@ -2,7 +2,25 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/db');
 
-// Get all tasks for a teacher
+/**
+ * @swagger
+ * /api/teacher-tasks/{teacherId}:
+ *   get:
+ *     summary: Get all tasks for a teacher
+ *     tags: [Teacher Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: teacherId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the teacher
+ *     responses:
+ *       200:
+ *         description: List of tasks retrieved successfully
+ *       500:
+ *         description: Server error
+ */
 router.get('/:teacherId', async (req, res) => {
     try {
         const { teacherId } = req.params;
@@ -16,7 +34,42 @@ router.get('/:teacherId', async (req, res) => {
     }
 });
 
-// Create new task
+/**
+ * @swagger
+ * /api/teacher-tasks:
+ *   post:
+ *     summary: Create a new task
+ *     tags: [Teacher Tasks]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teacher_id
+ *               - title
+ *               - description
+ *               - due_date
+ *               - priority
+ *             properties:
+ *               teacher_id:
+ *                 type: integer
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               due_date:
+ *                 type: string
+ *                 format: date
+ *               priority:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Task created successfully
+ *       500:
+ *         description: Server error
+ */
 router.post('/', async (req, res) => {
     try {
         const { teacher_id, title, description, due_date, priority } = req.body;
@@ -32,7 +85,38 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Update task status
+/**
+ * @swagger
+ * /api/teacher-tasks/{taskId}/status:
+ *   patch:
+ *     summary: Update task status
+ *     tags: [Teacher Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the task
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Task status updated successfully
+ *       404:
+ *         description: Task not found
+ *       500:
+ *         description: Server error
+ */
 router.patch('/:taskId/status', async (req, res) => {
     try {
         const { taskId } = req.params;
@@ -53,7 +137,48 @@ router.patch('/:taskId/status', async (req, res) => {
     }
 });
 
-// Update task details
+/**
+ * @swagger
+ * /api/teacher-tasks/{taskId}:
+ *   put:
+ *     summary: Update task details
+ *     tags: [Teacher Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the task
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - description
+ *               - due_date
+ *               - priority
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               due_date:
+ *                 type: string
+ *                 format: date
+ *               priority:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Task details updated successfully
+ *       404:
+ *         description: Task not found
+ *       500:
+ *         description: Server error
+ */
 router.put('/:taskId', async (req, res) => {
     try {
         const { taskId } = req.params;
@@ -74,7 +199,27 @@ router.put('/:taskId', async (req, res) => {
     }
 });
 
-// Delete task
+/**
+ * @swagger
+ * /api/teacher-tasks/{taskId}:
+ *   delete:
+ *     summary: Delete a task
+ *     tags: [Teacher Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the task
+ *     responses:
+ *       200:
+ *         description: Task deleted successfully
+ *       404:
+ *         description: Task not found
+ *       500:
+ *         description: Server error
+ */
 router.delete('/:taskId', async (req, res) => {
     try {
         const { taskId } = req.params;
@@ -94,7 +239,31 @@ router.delete('/:taskId', async (req, res) => {
     }
 });
 
-// Get tasks by status
+/**
+ * @swagger
+ * /api/teacher-tasks/{teacherId}/status/{status}:
+ *   get:
+ *     summary: Get tasks by status
+ *     tags: [Teacher Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: teacherId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the teacher
+ *       - in: path
+ *         name: status
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Status of the tasks
+ *     responses:
+ *       200:
+ *         description: List of tasks retrieved successfully
+ *       500:
+ *         description: Server error
+ */
 router.get('/:teacherId/status/:status', async (req, res) => {
     try {
         const { teacherId, status } = req.params;
@@ -110,7 +279,31 @@ router.get('/:teacherId/status/:status', async (req, res) => {
     }
 });
 
-// Get tasks by priority
+/**
+ * @swagger
+ * /api/teacher-tasks/{teacherId}/priority/{priority}:
+ *   get:
+ *     summary: Get tasks by priority
+ *     tags: [Teacher Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: teacherId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the teacher
+ *       - in: path
+ *         name: priority
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Priority of the tasks
+ *     responses:
+ *       200:
+ *         description: List of tasks retrieved successfully
+ *       500:
+ *         description: Server error
+ */
 router.get('/:teacherId/priority/:priority', async (req, res) => {
     try {
         const { teacherId, priority } = req.params;
